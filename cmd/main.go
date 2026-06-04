@@ -1,12 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"go-with-tests/internal/helloworld"
+	"go-with-tests/internal/pointersanderrors"
+	"log"
 )
 
 func main() {
-	fmt.Println("Hello, world")
-	fmt.Println(helloworld.Hello("world", ""))
-	fmt.Println("hello")
+	_, err := pointersanderrors.ReadConfig()
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
