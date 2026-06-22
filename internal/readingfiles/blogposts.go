@@ -16,6 +16,15 @@ type Post struct {
 	Tags        []string
 }
 
+type PostViewModel struct {
+	Post
+	SanitisedTitle string
+}
+
+func (p Post) SanitisedTitle() string {
+	return strings.ToLower(strings.ReplaceAll(p.Title, " ", "-"))
+}
+
 const (
 	titleSeparator       = "Title: "
 	descriptionSeparator = "Description: "
