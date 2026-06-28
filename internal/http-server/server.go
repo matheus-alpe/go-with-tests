@@ -1,25 +1,39 @@
 package httpserver
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 )
 
-type PlayerStore interface {
-	GetPlayerScore(name string) (int, bool)
-	RecordWin(name string)
-}
-
-func NewPlayerServer(store PlayerStore) *PlayerServer {
-	return &PlayerServer{store}
-}
+const (
+	ContentTypeJSON = "application/json"
+)
 
 type PlayerServer struct {
 	store PlayerStore
+	http.Handler
 }
 
-func (p *PlayerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func NewPlayerServer(store PlayerStore) *PlayerServer {
+	p := new(PlayerServer)
+	p.store = store
+
+	router := http.NewServeMux()
+	router.Handle("/league", http.HandlerFunc(p.leagueHandler))
+	router.Handle("/players/", http.HandlerFunc(p.playersHandler))
+	p.Handler = router
+
+	return p
+}
+
+func (p *PlayerServer) leagueHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("content-type", ContentTypeJSON)
+	json.NewEncoder(w).Encode(p.store.GetLeague())
+}
+
+func (p *PlayerServer) playersHandler(w http.ResponseWriter, r *http.Request) {
 	player := strings.TrimPrefix(r.URL.Path, "/players/")
 
 	switch r.Method {
@@ -48,17 +62,4 @@ func (p *PlayerServer) processWin(w http.ResponseWriter, player string) {
 
 func NewInMemoryPLayerStore() *InMemoryPlayerStore {
 	return &InMemoryPlayerStore{map[string]int{}}
-}
-
-type InMemoryPlayerStore struct {
-	store map[string]int
-}
-
-func (i *InMemoryPlayerStore) GetPlayerScore(name string) (int, bool) {
-	value, found := i.store[name]
-	return value, found
-}
-
-func (i *InMemoryPlayerStore) RecordWin(name string) {
-	i.store[name]++
 }
