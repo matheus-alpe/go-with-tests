@@ -7,7 +7,9 @@ import (
 )
 
 func TestRecordingWinsAndRetrievingThem(t *testing.T) {
-	store := NewInMemoryPLayerStore()
+	database, cleanup := createTempFile(t, "")
+	defer cleanup()
+	store := NewFileSystemStore(database)
 	server := NewPlayerServer(store)
 	player := "Pepper"
 
@@ -27,8 +29,8 @@ func TestRecordingWinsAndRetrievingThem(t *testing.T) {
 		response := httptest.NewRecorder()
 		server.ServeHTTP(response, newLeagueRequest())
 		assertStatus(t, response.Code, http.StatusOK)
-		got := decodeFromResponse[[]Player](t, response.Body)
-		want := []Player{{"Pepper", 3}}
+		got := decodeFromResponse[League](t, response.Body)
+		want := League{{"Pepper", 3}}
 		assertDeepEqual(t, got, want)
 	})
 }
