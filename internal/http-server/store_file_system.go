@@ -2,25 +2,60 @@ package httpserver
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"os"
+	"sort"
 )
 
 type FileSystemStore struct {
-	database io.ReadWriteSeeker
+	database *json.Encoder
+	league   League
 }
 
-func NewFileSystemStore(db io.ReadWriteSeeker) *FileSystemStore {
-	return &FileSystemStore{db}
+func NewFileSystemStore(file *os.File) (*FileSystemStore, error) {
+	err := initialisePlayerDBFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("problem getting file info from file %s, %v", file.Name(), err)
+	}
+
+	league, err := NewLeague(file)
+
+	if err != nil {
+		return nil, fmt.Errorf("problem loading player store from file %s, %v", file.Name(), err)
+	}
+
+	return &FileSystemStore{
+		json.NewEncoder(&tape{file}),
+		league,
+	}, nil
+}
+
+func initialisePlayerDBFile(file *os.File) error {
+	file.Seek(0, io.SeekStart)
+
+	info, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("problem getting file info from file %s, %v", file.Name(), err)
+	}
+
+	if info.Size() == 0 {
+		file.Write([]byte("[]"))
+		file.Seek(0, io.SeekStart)
+	}
+
+	return nil
 }
 
 func (f *FileSystemStore) GetLeague() League {
-	f.database.Seek(0, io.SeekStart)
-	league, _ := NewLeague(f.database)
-	return league
+	sort.Slice(f.league, func(i, j int) bool {
+		return f.league[i].Wins > f.league[j].Wins
+	})
+	return f.league
 }
 
 func (f *FileSystemStore) GetPlayerScore(name string) (int, bool) {
-	if player := f.GetLeague().Find(name); player != nil {
+	if player := f.league.Find(name); player != nil {
 		return player.Wins, true
 	}
 
@@ -28,15 +63,13 @@ func (f *FileSystemStore) GetPlayerScore(name string) (int, bool) {
 }
 
 func (f *FileSystemStore) RecordWin(name string) {
-	league := f.GetLeague()
-	player := league.Find(name)
+	player := f.league.Find(name)
 
 	if player != nil {
 		player.Wins++
 	} else {
-		league = append(league, Player{name, 1})
+		f.league = append(f.league, Player{name, 1})
 	}
 
-	f.database.Seek(0, io.SeekStart)
-	json.NewEncoder(f.database).Encode(league)
+	f.database.Encode(f.league)
 }

@@ -169,6 +169,13 @@ func assertDeepEqual[T any](t testing.TB, got, want T) {
 	}
 }
 
+func assertNoError(t testing.TB, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatalf("didn't expect an error but got one, %v", err)
+	}
+}
+
 func decodeFromResponse[T any](t testing.TB, body io.Reader) (response T) {
 	t.Helper()
 	err := json.NewDecoder(body).Decode(&response)

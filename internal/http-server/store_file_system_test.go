@@ -1,7 +1,6 @@
 package httpserver
 
 import (
-	"io"
 	"os"
 	"testing"
 )
@@ -13,12 +12,13 @@ func TestFileSystemStore(t *testing.T) {
 			{"Name": "Chris", "Wins": 33}]`)
 		defer cleanup()
 
-		store := NewFileSystemStore(database)
+		store, err := NewFileSystemStore(database)
+		assertNoError(t, err)
 
 		got := store.GetLeague()
 		want := League{
-			{"Cleo", 10},
 			{"Chris", 33},
+			{"Cleo", 10},
 		}
 
 		assertDeepEqual(t, got, want)
@@ -33,7 +33,8 @@ func TestFileSystemStore(t *testing.T) {
 			{"Name": "Chris", "Wins": 33}]`)
 		defer cleanup()
 
-		store := NewFileSystemStore(database)
+		store, err := NewFileSystemStore(database)
+		assertNoError(t, err)
 		got, _ := store.GetPlayerScore("Chris")
 		want := 33
 
@@ -48,7 +49,9 @@ func TestFileSystemStore(t *testing.T) {
 			{"Name": "Chris", "Wins": 33}]`)
 		defer cleanup()
 
-		store := NewFileSystemStore(database)
+		store, err := NewFileSystemStore(database)
+		assertNoError(t, err)
+
 		store.RecordWin("Chris")
 
 		got, _ := store.GetPlayerScore("Chris")
@@ -65,7 +68,9 @@ func TestFileSystemStore(t *testing.T) {
 			{"Name": "Chris", "Wins": 33}]`)
 		defer cleanup()
 
-		store := NewFileSystemStore(database)
+		store, err := NewFileSystemStore(database)
+		assertNoError(t, err)
+
 		store.RecordWin("Pepper")
 
 		got, _ := store.GetPlayerScore("Pepper")
@@ -75,9 +80,38 @@ func TestFileSystemStore(t *testing.T) {
 			t.Errorf("got %d want %d", got, want)
 		}
 	})
+
+	t.Run("works with an empty file", func(t *testing.T) {
+		database, cleanup := createTempFile(t, "")
+		defer cleanup()
+
+		_, err := NewFileSystemStore(database)
+		assertNoError(t, err)
+	})
+
+	t.Run("league sorted", func(t *testing.T) {
+		database, cleanup := createTempFile(t, `[
+			{"Name": "Cleo", "Wins": 10},
+			{"Name": "Chris", "Wins": 33}]`)
+		defer cleanup()
+
+		store, err := NewFileSystemStore(database)
+		assertNoError(t, err)
+
+		got := store.GetLeague()
+		want := League{
+			{"Chris", 33},
+			{"Cleo", 10},
+		}
+
+		assertDeepEqual(t, got, want)
+
+		got = store.GetLeague()
+		assertDeepEqual(t, got, want)
+	})
 }
 
-func createTempFile(t testing.TB, initialData string) (io.ReadWriteSeeker, func()) {
+func createTempFile(t testing.TB, initialData string) (*os.File, func()) {
 	t.Helper()
 
 	tmpFile, err := os.CreateTemp("", "db")
