@@ -1,21 +1,24 @@
 package main
 
 import (
+	"fmt"
 	httpserver "go-with-tests/internal/http-server"
 	"log"
-	"net/http"
+	"os"
 )
 
 const dbFileName = "game.db.json"
 
 func main() {
+	fmt.Println("Let's play poker")
+	fmt.Println("Type {name} wins to record a win")
+
 	store, cleanup, err := httpserver.NewFileSystemStoreFromFile(dbFileName)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer cleanup()
 
-	server := httpserver.NewPlayerServer(store)
-	log.Println("running on localhost:5000")
-	log.Fatal(http.ListenAndServe(":5000", server))
+	game := httpserver.NewCLI(store, os.Stdin)
+	game.PlayPoker()
 }
